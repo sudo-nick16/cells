@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <iostream>
 #include <math.h>
 #include <raylib.h>
@@ -5,7 +6,7 @@
 const size_t WINDOW_HEIGHT = 900;
 const size_t WINDOW_WIDTH = 900;
 
-const size_t PX_SIZE = 20;
+const size_t PX_SIZE = 10;
 
 const size_t HEIGHT = WINDOW_HEIGHT / PX_SIZE;
 const size_t WIDTH = WINDOW_WIDTH / PX_SIZE;
@@ -31,41 +32,85 @@ void print_grid(void) {
   }
 }
 
+enum States { Dead, Alive };
+enum Direction { N, NE, E, SE, S, SW, W, NW };
+
+void kill_except(size_t y, size_t x, Direction dir) {
+  if (dir != N) {
+    grid[y - 1][x] = Dead;
+  }
+  if (dir != NE) {
+    grid[y - 1][x + 1] = Dead;
+  }
+  if (dir != E) {
+    grid[y][x + 1] = Dead;
+  }
+  if (dir != SE) {
+    grid[y + 1][x + 1] = Dead;
+  }
+  if (dir != S) {
+    grid[y - 1][x] = Dead;
+  }
+  if (dir != SW) {
+    grid[y - 1][x - 1] = Dead;
+  }
+  if (dir != W) {
+    grid[y][x - 1] = Dead;
+  }
+  if (dir != NW) {
+    grid[y - 1][x - 1] = Dead;
+  }
+}
+
 void clear_grid(void) {
   for (size_t i = 0; i < HEIGHT; ++i) {
     for (size_t j = 0; j < WIDTH; ++j) {
-      grid[i][j] = 0;
+      grid[i][j] = Dead;
     }
   }
 }
 
-void survive(void) {
-  for (size_t i = 2; i < HEIGHT - 2; i += 1) {
-    for (size_t j = 2; j < WIDTH - 2; j += 1) {
-      size_t count = 0;
-      if (grid[i - 2][j])
-        count++;
-      if (grid[i - 1][j + 1])
-        count++;
-      if (grid[i][j + 2])
-        count++;
-      if (grid[i + 1][j + 1])
-        count++;
-      if (grid[i + 2][j])
-        count++;
-      if (grid[i + 1][j - 1])
-        count++;
-      if (grid[i][j - 2])
-        count++;
-      if (grid[i - 1][j - 1])
-        count++;
+bool is_alive(size_t x, size_t y, int mat[][HEIGHT]) {
+  if (x < 0 || y < 0 || x >= HEIGHT || y >= WIDTH) {
+    return false;
+  }
+  if (mat[x][y] == Alive) {
+    return true;
+  }
+  return false;
+}
 
-      if (count == 3 && grid[i][j] == 0) {
-        grid[i][j] = 1;
-      } else if ((count == 2 || count == 3) && grid[i][j] == 1) {
-        grid[i][j] = 1;
+int sur_cells[8][2] = {
+    {-1, -1}, {-1, 0}, {-1, 1}, {0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1},
+    // {-2, 0}, {-1, 1}, {0, 2}, {1, 1}, {2, 0}, {1, -1}, {0, -2}, {-1, -1},
+};
+
+void survive(void) {
+  int temp[HEIGHT][WIDTH];
+  for (size_t i = 0; i < HEIGHT; i += 1) {
+    for (size_t j = 0; j < WIDTH; j += 1) {
+      temp[i][j] = grid[i][j];
+    }
+  }
+
+  for (size_t i = 0; i < HEIGHT; i += 1) {
+    for (size_t j = 0; j < WIDTH; j += 1) {
+      size_t count = 0;
+      for (size_t k = 0; k < 8; ++k) {
+        if (is_alive(i + sur_cells[k][0], j + sur_cells[k][1], temp)) {
+          count++;
+        }
+      }
+      if (is_alive(i, j, temp)) {
+        if (count == 2 || count == 3) {
+          grid[i][j] = Alive;
+        } else {
+          grid[i][j] = Dead;
+        }
       } else {
-        grid[i][j] = 0;
+        if (count == 3) {
+          grid[i][j] = Alive;
+        }
       }
     }
   }
@@ -101,7 +146,7 @@ int main(void) {
 
     for (size_t i = 0; i < HEIGHT; i += 1) {
       for (size_t j = 0; j < WIDTH; j += 1) {
-        if (grid[i][j] == 1) {
+        if (grid[i][j] == Alive) {
           DrawRectangle(i * PX_SIZE, j * PX_SIZE, PX_SIZE, PX_SIZE,
                         Color{56, 229, 129, 255});
         } else {
@@ -110,10 +155,10 @@ int main(void) {
         }
       }
     }
-    WaitTime(0.01);
     if (live) {
       survive();
     }
+    WaitTime(0.1);
     EndDrawing();
   }
 
